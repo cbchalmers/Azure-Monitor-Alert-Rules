@@ -1,0 +1,49 @@
+variables:
+- group: 'terraform-system'
+- group: 'terraform-backend'
+- group: 'github-pat-chris-b-chalmers'
+- name: 'github-organisation'
+  value: 'cbchalmers'
+- name: 'github-repository'
+  value: 'Azure-Monitor-Alert-Rules'
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: 'Validate'
+  jobs:
+  - job: Validate
+    continueOnError: false
+    steps:
+    - task: TerraformInstaller@0
+      displayName: 'Terraform install'
+      inputs:
+        terraformVersion: '$(terraformVersion)'
+    - task: TerraformTaskV1@0
+      displayName: 'Terraform init'
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        backendServiceArm: '$(backendServiceArm)'
+        backendAzureRmResourceGroupName: '$(backendAzureRmResourceGroupName)'
+        backendAzureRmStorageAccountName: '$(backendAzureRmStorageAccountName)'
+        backendAzureRmContainerName: '$(backendAzureRmContainerName)'
+        backendAzureRmKey: '$(backendAzureRmKey)'
+    - task: TerraformTaskV1@0
+      displayName: 'Terraform validate'
+      inputs:
+        provider: 'azurerm'
+        command: 'validate'
+- stage: 'GitPush'
+  jobs:
+    - job: GitPush
+      steps:
+        - checkout: self
+        - script: git push https://$(github-pat-chris-b-chalmers)@github.com/$(github-organisation)/$(github-repository).git HEAD:refs/heads/master
+          displayName: 'Git push to remote repository'
+          env:
+            github-pat-chris-b-chalmers: $(github-pat-chris-b-chalmers)
